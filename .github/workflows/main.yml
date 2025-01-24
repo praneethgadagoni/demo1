@@ -1,92 +1,294 @@
-name: CI/CD Pipeline with Auto-Promotion
+# name: CI/CD Pipeline with Auto-Promotion
+ 
+# on:
+#   push:
+#     branches:
+#       - dev
+ 
+# jobs:
+#   build-test:
+#     name: Build and Test React App
+#     runs-on: ubuntu-latest
+ 
+#     steps:
+#       # Step 1: Checkout Code
+#       - name: Checkout Code
+#         uses: actions/checkout@v3
+ 
+#       # Step 2: Setup Node.js Environment
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v3
+#         with:
+#           node-version: 16
+ 
+#       # Step 3: Install Dependencies
+#       - name: Install Dependencies
+#         run: npm install
+ 
+#       # Step 4: Run Tests
+#       - name: Run Tests
+#         run: npm test -- --watchAll=false
+ 
+#       # Step 5: Build the App
+#       - name: Build App
+#         run: npm run build
+ 
+#   auto-merge-to-prod:
+#     name: Auto-Merge to Prod
+#     runs-on: ubuntu-latest
+#     needs: build-test
+#     if: success()
+ 
+#     steps:
+#       # Step 1: Checkout Code
+#       - name: Checkout Code
+#         uses: actions/checkout@v3
+ 
+#       # Step 2: Configure Git User
+#       - name: Configure Git User
+#         run: |
+#           git config --global user.name "Praneethgadagoni"
+#           git config --global user.email "pgadagoni@anergroup.com"
+ 
+#       # Step 3: Merge Dev into Prod with Automatic Conflict Resolution
+#       - name: Merge Dev into Prod
+#         run: |
+#           git fetch origin
+#           git checkout prod
+#           git merge dev --strategy-option theirs --allow-unrelated-histories --no-edit
+#           git push origin prod
+ 
+#   deploy:
+#     name: Deploy React App to AWS
+#     runs-on: ubuntu-latest
+#     needs: auto-merge-to-prod
+ 
+#     steps:
+#       # Step 1: Checkout Code
+#       - name: Checkout Code
+#         uses: actions/checkout@v3
+ 
+#       # Step 2: Configure AWS Credentials
+#       - name: Configure AWS Credentials
+#         uses: aws-actions/configure-aws-credentials@v3
+#         with:
+#           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#           aws-region: us-east-1
+ 
+#       # Step 3: Install Dependencies
+#       - name: Install Dependencies
+#         run: npm install
+ 
+#       # Step 4: Run Build Command (if build folder does not exist)
+#       - name: Run Build Command (if build folder does not exist)
+#         run: |
+#           if [ ! -d "build" ]; then
+#             npm run build
+#           fi
+ 
+#       # Step 5: Sync to S3
+#       - name: Sync to S3
+#         run: aws s3 sync ./build s3://praneeth25 --delete
+
+
+# name: CI/CD for React App
+ 
+# on:
+#   push:
+#     branches:
+#       - main
+ 
+# jobs:
+#   build-and-deploy:
+#     runs-on: ubuntu-latest
+ 
+#     steps:
+#     # Checkout the repository
+#     - name: Checkout code
+#       uses: actions/checkout@v3
+ 
+#     # Setup Node.js
+#     - name: Set up Node.js
+#       uses: actions/setup-node@v3
+#       with:
+#         node-version: 16
+ 
+#     # Install dependencies
+#     - name: Install dependencies
+#       run: npm install
+ 
+#     # Run tests
+#     - name: Run tests
+#       run: npm test -- --watchAll=false
+ 
+#     # Build the app
+#     - name: Build the app
+#       run: npm run build
+ 
+#     # Deploy to Netlify
+#     - name: Deploy to Netlify
+#       uses: nwtgck/actions-netlify@v3
+#       with:
+#         publish-dir: ./build
+#         production-deploy: true
+#         NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+#         NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
+
+
+name: Multi-Environment Deployment with Notifications
  
 on:
   push:
     branches:
       - dev
+      - prod
+  pull_request:
+    branches:
+      - prod
+  workflow_dispatch:
+ 
+permissions:
+  contents: write
+  id-token: write
+  pull-requests: write
  
 jobs:
-  build-test:
-    name: Build and Test React App
+  build-and-deploy:
     runs-on: ubuntu-latest
- 
+    if: github.ref_name == 'dev'  # Run only on dev branch
     steps:
-      # Step 1: Checkout Code
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      # Step 1: Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
  
-      # Step 2: Setup Node.js Environment
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      # Step 2: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
  
-      # Step 3: Install Dependencies
-      - name: Install Dependencies
-        run: npm install
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: npm ci
  
-      # Step 4: Run Tests
-      - name: Run Tests
-        run: npm test -- --watchAll=false
+      # Step 4: Run tests (only for dev branch)
+      - name: Run tests
+        if: github.ref_name == 'dev'
+        run: npm test
  
-      # Step 5: Build the App
-      - name: Build App
-        run: npm run build
+      # Step 5: Build the app
+      - name: Build the app
+        run: npm run build --verbose
  
-  auto-merge-to-prod:
-    name: Auto-Merge to Prod
-    runs-on: ubuntu-latest
-    needs: build-test
-    if: success()
+      # Step 6: List dist directory for debugging
+      - name: List Build directory
+        run: ls -alh ./build || echo "Build directory not found"
  
-    steps:
-      # Step 1: Checkout Code
-      - name: Checkout Code
-        uses: actions/checkout@v3
- 
-      # Step 2: Configure Git User
-      - name: Configure Git User
-        run: |
-          git config --global user.name "Praneethgadagoni"
-          git config --global user.email "pgadagoni@anergroup.com"
- 
-      # Step 3: Merge Dev into Prod with Automatic Conflict Resolution
-      - name: Merge Dev into Prod
-        run: |
-          git fetch origin
-          git checkout prod
-          git merge dev --strategy-option theirs --allow-unrelated-histories --no-edit
-          git push origin prod
- 
-  deploy:
-    name: Deploy React App to AWS
-    runs-on: ubuntu-latest
-    needs: auto-merge-to-prod
- 
-    steps:
-      # Step 1: Checkout Code
-      - name: Checkout Code
-        uses: actions/checkout@v3
- 
-      # Step 2: Configure AWS Credentials
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v3
+      # Step 7: Deploy to Netlify (dev branch)
+      - name: Deploy to Netlify (dev)
+        if: github.ref == 'refs/heads/dev'
+        uses: nwtgck/actions-netlify@v3
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          publish-dir: ./build
+          production-deploy: false
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_DEV_SITE_ID }}
+          HOMEPAGE_URL: ${{ secrets.HOMEPAGE_URL }}
  
-      # Step 3: Install Dependencies
-      - name: Install Dependencies
-        run: npm install
+      # Step 8: Send email for dev deploy
+      - name: Send email for dev deploy
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "Code Deployed to Dev Environment"
+          body: "The latest code has been successfully deployed to the dev environment. Visit the site at ${{ secrets.HOMEPAGE_URL }}."
+          to: "praneethgoud210@gmail.com"
+          from: "praneethgoud4567@gmail.com"
  
-      # Step 4: Run Build Command (if build folder does not exist)
-      - name: Run Build Command (if build folder does not exist)
-        run: |
-          if [ ! -d "build" ]; then
-            npm run build
-          fi
+  create-pull-request:
+    name: Create Pull Request for Dev to Prod
+    runs-on: ubuntu-latest
+    needs: build-and-deploy
+    if: github.ref_name == 'dev'
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout Code
+        uses: actions/checkout@v3
  
-      # Step 5: Sync to S3
-      - name: Sync to S3
-        run: aws s3 sync ./build s3://praneeth25 --delete
+      # Step 2: Install GitHub CLI
+      - name: Install GitHub CLI
+        run: sudo apt-get install -y gh
+ 
+      # Step 3: Authenticate with GitHub CLI using Personal Access Token (PAT)
+      - name: Authenticate with GitHub CLI
+        run: echo "${{ secrets.GH_TOKEN }}" | gh auth login --with-token
+ 
+      # Step 4: Create the Pull Request
+      - name: Create Pull Request
+        run: gh pr create --base prod --head dev --title "Merge Dev into Prod" --body "This PR merges changes from the dev branch to the prod branch."
+ 
+      # Step 5: Send email for PR creation
+      - name: Send email for PR creation
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "Pull Request Created: Dev to Prod"
+          body: "A pull request has been created to merge changes from the dev branch to the prod branch."
+          to: "praneethgoud210@gmail.com"
+          from: "praneethgoud4567@gmail.com"
+ 
+  deploy-to-netlify-prod:
+    name: Deploy to Netlify (Prod)
+    runs-on: ubuntu-latest
+    if: github.ref_name == 'prod'  # Trigger only on a push to prod
+    steps:
+      # Step 1: Checkout Code
+      - name: Checkout Code
+        uses: actions/checkout@v3
+ 
+      # Step 2: Install dependencies
+      - name: Install dependencies
+        run: npm ci
+ 
+      # Step 3: Build the app
+      - name: Build the app
+        run: npm run build --verbose
+ 
+      # Step 4: List dist directory for debugging
+      - name: List Build directory
+        run: ls -alh ./build || echo "Build directory not found"
+ 
+      # Step 5: Deploy to Netlify (prod branch)
+      - name: Deploy to Netlify (Prod)
+        uses: nwtgck/actions-netlify@v3
+        with:
+          publish-dir: ./build
+          production-deploy: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_PROD_SITE_ID }}
+          HOMEPAGE_URL: ${{ secrets.PROD_HOMEPAGE_URL }}
+ 
+      # Step 6: Send email for prod deploy
+      - name: Send email for prod deploy
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "Code Deployed to Prod Environment"
+          body: "The latest code has been successfully deployed to the prod environment. Visit the site at ${{ secrets.PROD_HOMEPAGE_URL }}."
+          to: "praneethgoud210@gmail.com"
+          from: "praneethgoud4567@gmail.com"
