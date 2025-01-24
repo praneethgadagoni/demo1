@@ -18,9 +18,7 @@
 
     "react-scripts": "^3.0.1",
 
-    "web-vitals": "^4.2.4",
-
-    "webpack-cli": "^6.0.1"
+    "web-vitals": "^4.2.4"
 
   },
 
@@ -86,7 +84,9 @@
 
     "gh-pages": "^6.3.0",
 
-    "webpack": "^4.29.6"
+    "webpack": "^4.29.6",
+
+    "webpack-cli": "^3.3.12"
 
   }
 
